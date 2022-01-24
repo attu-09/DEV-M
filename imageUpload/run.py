@@ -57,6 +57,7 @@ def generate_payload(filesList):
 
 
 	payload = {
+		"device-serialID":DEVICE_SERIAL_ID,
 		"bucket-name":BUCKET_NAME,
 		"files": filesList
 	}
