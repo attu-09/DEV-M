@@ -16,6 +16,9 @@ from verification import start_verification
 with open(f"/etc/entomologist/ento.conf",'r') as file:
 	data=json.load(file)
 
+
+DEVICE_SERIAL_ID = data["device"]["SERIAL_ID"]
+
 provisionstatus=data["device"]["PROVISION_STATUS"]
 duration=data["device"]["ON_DURATION"]
 
@@ -31,18 +34,18 @@ BUCKET_NAME = "test-entomoligist"
 # Publish Details
 
 PUBLISH_CLIENT_NAME = 'digitalEntomologist'
-PUBLISH_TOPIC = 'testThings_DE/generateURL'
+PUBLISH_TOPIC = f'cameraDevice/generateURL/{DEVICE_SERIAL_ID}'
 PUBLISH_QoS = 1
 
 # Subscribe Details
 
 SUBSCRIBE_CLIENT_NAME = 'iot-data'
-SUBSCRIBE_TOPIC = 'testThings_DE/getURL'
+SUBSCRIBE_TOPIC = f'cameraDevice/getURL/{DEVICE_SERIAL_ID}'
 SUBSCRIBE_QoS = 0
 
 # Verification Details
 
-VERIFICATION_TOPIC = 'testThings_DE/fileUploaded'
+VERIFICATION_TOPIC = f'cameraDevice/fileUploaded/{DEVICE_SERIAL_ID}'
 
 # Buffer Storage Path
 
