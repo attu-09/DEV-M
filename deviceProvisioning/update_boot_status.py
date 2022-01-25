@@ -8,10 +8,10 @@ with open(f"/etc/entomologist/ento.conf",'r') as file:
 	data=json.load(file)
 
 MQTT_BROKER = data["device"]["ENDPOINT_URL"] # AWS ARN
-
+DEVICE_SERIAL_ID = data["device"]["SERIAL_ID"]
 PORT = 8883
 MQTT_KEEP_INTERVAL = 44
-TOPIC = "testThings_DE/booted"
+TOPIC = f"cameraDevice/{DEVICE_SERIAL_ID}/booted"
 
 def on_connect(client, userdata, flags, rc):
 	if rc == 0:

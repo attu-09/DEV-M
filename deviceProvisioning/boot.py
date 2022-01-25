@@ -127,8 +127,8 @@ while True:
         print(claim_cert_path)
         provisioning_template_name = "CameraProvisioningTemplate"
 
-        #machine_uuid = sys.argv[1]
-        machine_uuid = data["device"]["SERIAL_ID"]
+        #device_serial_id = sys.argv[1]
+        device_serial_id = data["device"]["SERIAL_ID"]
 
         # Establish connection to your AWS account's IoT endpoint
         event_loop_group = io.EventLoopGroup(1)
@@ -141,13 +141,13 @@ while True:
         	pri_key_filepath=private_key_path,
         	client_bootstrap=client_bootstrap,
         	ca_filepath=root_cert_path,
-        	client_id=machine_uuid,
+        	client_id=device_serial_id,
         	on_connection_interrupted=on_connection_interrupted,
         	on_connection_resumed=on_connection_resumed,
         	clean_session=False,
         	keep_alive_secs=6)
 
-        print(f"Connecting to {iot_endpoint} with client ID '{machine_uuid}'...")
+        print(f"Connecting to {iot_endpoint} with client ID '{device_serial_id}'...")
         connected_future = mqtt_connection.connect()
         identity_client = iotidentity.IotIdentityClient(mqtt_connection)
 
@@ -233,7 +233,8 @@ while True:
         register_thing_request = iotidentity.RegisterThingRequest(
         	template_name=provisioning_template_name,
         	certificate_ownership_token=create_keys_and_certificate_response.certificate_ownership_token,
-        	parameters={"serialID": machine_uuid
+        	parameters={
+                "serialID": device_serial_id
         				})
 
         print("Publishing to RegisterThing topic...")
@@ -269,7 +270,7 @@ while True:
 
         	shutil.copy2(root_cert_path, root_cert_long_term_path)
 
-        	update_boot_status(machine_uuid)
+        	update_boot_status(device_serial_id)
 
         	sys.exit("Device provisioned successfully")
 
