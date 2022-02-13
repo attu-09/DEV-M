@@ -1,5 +1,4 @@
 from PIL import Image
-from PIL import ImageTk
 import cv2
 import numpy as np
 import threading
