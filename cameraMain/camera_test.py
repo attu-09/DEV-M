@@ -8,7 +8,7 @@ from datetime import datetime
 class MotionRecorder(object):
 
     hist_threshold = 500    # motion sensitivity => higher the value lesser the sensitivity
-    path = 0
+    #path = 0
     
     cap = cv2.VideoCapture("v4l2src ! video/x-raw, width=640, height=480, framerate=30/1, format=(string)BGRx ! decodebin ! videoconvert ! appsink", cv2.CAP_GSTREAMER)
     #cap = cv2.VideoCapture("videotestsrc ! video/x-raw, format=I420, width=640, height=480 ! vpuenc_h264 ! appsink",cv2.CAP_GSTREAMER)
