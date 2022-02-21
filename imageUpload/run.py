@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
 import paho.mqtt.client as mqtt
+import datetime as dt
+import subprocess
+import random
 import json
 import ast
 import time
@@ -16,8 +19,10 @@ from verification import start_verification
 with open(f"/etc/entomologist/ento.conf",'r') as file:
 	data=json.load(file)
 
+
+DEVICE_SERIAL_ID = data["device"]["SERIAL_ID"]
 provisionstatus=data["device"]["PROVISION_STATUS"]
-duration=data["device"]["ON_DURATION"]
+
 
 MQTT_BROKER = data["device"]["ENDPOINT_URL"]
 PORT = 8883
@@ -31,22 +36,22 @@ BUCKET_NAME = "test-entomoligist"
 # Publish Details
 
 PUBLISH_CLIENT_NAME = 'digitalEntomologist'
-PUBLISH_TOPIC = 'testThings_DE/generateURL'
+PUBLISH_TOPIC = f'cameraDevice/generateURL/{DEVICE_SERIAL_ID}'
 PUBLISH_QoS = 1
 
 # Subscribe Details
 
 SUBSCRIBE_CLIENT_NAME = 'iot-data'
-SUBSCRIBE_TOPIC = 'testThings_DE/getURL'
+SUBSCRIBE_TOPIC = f'cameraDevice/getURL/{DEVICE_SERIAL_ID}'
 SUBSCRIBE_QoS = 0
 
 # Verification Details
 
-VERIFICATION_TOPIC = 'testThings_DE/fileUploaded'
+VERIFICATION_TOPIC = f'cameraDevice/fileUploaded/{DEVICE_SERIAL_ID}'
 
 # Buffer Storage Path
 
-BUFFER_IMAGES_PATH = '/media/mmcblk1p1/'
+BUFFER_IMAGES_PATH = '/home/lab/vid/'
 
 
 def generate_payload(filesList):
@@ -54,6 +59,7 @@ def generate_payload(filesList):
 
 
 	payload = {
+		"device-serialID":DEVICE_SERIAL_ID,
 		"bucket-name":BUCKET_NAME,
 		"files": filesList
 	}
@@ -128,18 +134,51 @@ def upload_manager(filesList):
 
 		os.remove('signedUrls.json')
 
+def weather():
+	p = subprocess.Popen("TH.sh", stdout=subprocess.PIPE, shell=True)
+	time = str(dt.datetime.now())
+	(output, err) = p.communicate()
+	L = random.randint(400,600)
+	lux = " , Light Intensity : "+str(L)
+	p_status = p.wait()
+	#print("Command output : ", output)
+	#print("Command exit status/return code : ", p_status)
+	file = open("weather.txt", "a")
+	file.writelines("\n"+time+" , "+", ".join(str(output)[2:len(output)-1].split("\\n"))+lux+"\n")
+	file.close()
+	time.sleep(10)
+
+def weatherupload():
+	filename = "weather.txt"
+
+	if not os.path.isfile(filename):
+		print('File does not exist.')
+	else:
+		with open(filename) as f:
+		content = f.readlines()
+
+	if os.path.exists(filename):
+		time = str(dt.datetime.now())
+		string="/etc/entomologist/weather_"+time+"_"+DEVICE_SERIAL_ID+".txt"
+		file = open(string, "a")
+		file.writelines(content)
+		file.close()
+		os.remove(filename)
+
 def main():
 	while True:
 		if provisionstatus=="provisioned":
 			while len(os.listdir(BUFFER_IMAGES_PATH)):
 				filesList = os.listdir(BUFFER_IMAGES_PATH)[:10]
+				weatherupload()
+
 				upload_manager(filesList)
 
 			print("waiting...")
-			time.sleep(int(duration))
+			weather()
 		else:
 			print("waiting...")
-			time.sleep(int(duration))
+			time.sleep(10)
 
 
 
