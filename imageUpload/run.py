@@ -159,7 +159,7 @@ def weatherupload():
 
 	if os.path.exists(filename):
 		time = str(dt.datetime.now())
-		time = sentence.replace(" ", "_")
+		time = time.replace(" ", "_")
 		string="/etc/entomologist/weather_"+time+"_"+DEVICE_SERIAL_ID+".txt"
 		
 		file = open(string, "a")
