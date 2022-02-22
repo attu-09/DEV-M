@@ -1,86 +1,78 @@
-#! /usr/bin/env python
-import os
-import re
+from PIL import Image
 import cv2
 import numpy as np
+import threading
 from datetime import datetime
-import time
-import random
-import json
 
-with open(f"/etc/entomologist/ento.conf",'r') as file:
-    data=json.load(file)
+class MotionRecorder(object):
 
-provisionstatus=data["device"]["PROVISION_STATUS"]
+    hist_threshold = 500    # motion sensitivity => higher the value lesser the sensitivity
+    #path = 0
+    
+    cap = cv2.VideoCapture("v4l2src ! video/x-raw, width=640, height=480, framerate=30/1, format=(string)BGRx ! decodebin ! videoconvert ! appsink", cv2.CAP_GSTREAMER)
+    #cap = cv2.VideoCapture("videotestsrc ! video/x-raw, format=I420, width=640, height=480 ! vpuenc_h264 ! appsink",cv2.CAP_GSTREAMER)
+    subtractor = cv2.createBackgroundSubtractorMOG2()
+    # FourCC is a 4-byte code used to specify the video codec. The list of available codes can be found in fourcc.org.
+    fourcc = cv2.VideoWriter_fourcc(*'DIVX')     # for windows
+    fps = 12
+    img_counter = 0
+    skip_counter = 0
+    temp_img_for_video = []
+    skip_first_few_frames = 0
 
-'''
-#DEFAULT_CAMERA_NAME = '/dev/v4l/by-id/usb-046d_0825_6DCDEF50-video-index0'
+    def _init_(self):
+        pass
 
-device_num = 0
-if os.path.exists(DEFAULT_CAMERA_NAME):
-    device_path = os.path.realpath(DEFAULT_CAMERA_NAME)
-    device_re = re.compile("\/dev\/video(\d+)")
-    info = device_re.match(device_path)
-    if info:
-        device_num = int(info.group(1))
-        print("Using default video capture device on /dev/video" + str(device_num))
-cap = cv2.VideoCapture(device_num)
-'''
+    def start_storing_img(self, img):
+        blur = cv2.GaussianBlur(img, (19,19), 0)
+        mask = self.subtractor.apply(blur)
+        img_temp = np.ones(img.shape, dtype="uint8") * 255
+        img_temp_and = cv2.bitwise_and(img_temp, img_temp, mask=mask)
+        img_temp_and_bgr = cv2.cvtColor(img_temp_and, cv2.COLOR_BGR2GRAY)
+
+        hist, bins = np.histogram(img_temp_and_bgr.ravel(), 256, [0,256])
+        print(hist[255])
+
+        if(self.skip_first_few_frames < 5) : 
+            self.skip_first_few_frames += 1
+        else : 
+            if hist[255] > self.hist_threshold :
+                self.skip_counter = 0
+                self.img_counter += 1 
+                self.temp_img_for_video.append(img)
+            else : 
+                self.skip_counter += 1
+                if self.skip_counter >= 5 :
+                    self.save_recording()
+
+    def save_recording(self):
+        if self.img_counter >= 1:   
+            now = datetime.now()
+            video_name = str(now.year) + str(format(now.month,'02d')) + str(format(now.day,'02d')) + str(format(now.hour,'02d')) + str(format(now.minute,'02d')) + str(format(now.second,'02d')) + "_D0099" + ".avi"  
+            out = cv2.VideoWriter("/home/lab/vid/"+video_name, self.fourcc, self.fps, (640,480))
+            print(video_name)
+
+            for image in self.temp_img_for_video : 
+                out.write(image)
+
+            self.temp_img_for_video.clear()
+            self.img_counter = 0
 
 
-def rescale_frame(frame, percent=71): #Setting parameters
-    width = int(frame.shape[1] * percent / 100)
-    height = int(frame.shape[0] * percent / 100)
-    dim = (width, height)
-    return cv2.resize(frame, dim, interpolation=cv2.INTER_AREA)
+    def start(self):
+        while True :
+            available, frame = self.cap.read()
+            if available :
+                self.start_storing_img(frame)
+                #cv2.imshow("Motion Recorder",frame)
+                if cv2.waitKey(1) & 0xFF == ord('x'):
+                    break
 
-if provisionstatus=="provisioned":
-    try:
-        #cap = cv2.VideoCapture(-1)
-        cap = cv2.VideoCapture("v4l2src ! video/x-raw, width=640, height=480, framerate=30/1, format=(string)BGRx ! decodebin ! videoconvert ! appsink",cv2.CAP_GSTREAMER)
-        num=1
-        while (True):
-            ret1, frame11 = cap.read()
-            ret1, frame12 = cap.read()
-            #print(frame11,frame12)
-
-            diff1 = cv2.absdiff(frame11, frame12)#Absoulte difference between the pixels of the  1st and 2nd image frame or By using this we will be able to extract just the pixels of the objects that are moving
-
-            gray1 = cv2.cvtColor(diff1, cv2.COLOR_BGR2GRAY)# converting this difference into gray scale mode and  grayscale images are single-dimensional, Reduces model complexity
-
-            blur1 = cv2.GaussianBlur(gray1, (5, 5), 0)#Gaussian filter is a low-pass filter that removes the high-frequency components.
-
-            _, tresh1 = cv2.threshold(blur1, 40, 255, cv2.THRESH_BINARY)# way to extract useful information encoded into pixels while minimizing background noise or upto which we want motion to be detected
-
-            dilated1 = cv2.dilate(tresh1, None, iterations=3)#iterations means how accurate our smoothening will be if we inc background noise aajegi.
-
-            contours1, _ = cv2.findContours(dilated1, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE) # points at which motion is happening.
-
-            for contour in contours1:
-                (x, y, w, h) = cv2.boundingRect(contour)# making of rectangular frame.
-                if cv2.contourArea(contour) < 3000: # if area of contour is less than 3000, then we are going to do nothing.But if its greater than 2000, a rectangle will be drawn.
-                    continue
-                cv2.rectangle(frame11, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                cv2.putText(frame11, "Status: {}".format('Motion Detected'), (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-                t = time.localtime()
-                path = '/media/mmcblk1p1/' # path where images will be stored
-                #num = random.random()
-                filename = path + str(t[0]) + str(t[1]) + str(t[2]) + "_" + str(t[3]) + str(t[4]) + str(t[5]) + str(num) + ".jpg"
-                cv2.imwrite(filename, frame11, [int(cv2.IMWRITE_JPEG_QUALITY), 100])
-                print('Image being capture...', filename)
-                num+=1
-
-            # cv2.line(frame, (0, 300), (200, 200), (0, 255, 0), 5)
-            resizedframe11 = rescale_frame(frame11, percent=75)
-            #cv2.imshow('Ready to capture', resizedframe11)
-
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-        cap.release()
+    def end(self):
+        self.save_recording()
+        self.cap.release()
         cv2.destroyAllWindows()
-    except Exception as e:
-        print(e)
-        time.sleep(2)
 
-else:
-    time.sleep(2)
+MR = MotionRecorder()
+MR.start()
+MR.end()

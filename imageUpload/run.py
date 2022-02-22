@@ -135,7 +135,7 @@ def upload_manager(filesList):
 		os.remove('signedUrls.json')
 
 def weather():
-	p = subprocess.Popen("TH.sh", stdout=subprocess.PIPE, shell=True)
+	p = subprocess.Popen("/usr/sbin/weather/hts221", stdout=subprocess.PIPE, shell=True)
 	time = str(dt.datetime.now())
 	(output, err) = p.communicate()
 	L = random.randint(400,600)
