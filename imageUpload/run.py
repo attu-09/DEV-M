@@ -155,11 +155,13 @@ def weatherupload():
 		print('File does not exist.')
 	else:
 		with open(filename) as f:
-		content = f.readlines()
+			content = f.readlines()
 
 	if os.path.exists(filename):
 		time = str(dt.datetime.now())
+		time = sentence.replace(" ", "_")
 		string="/etc/entomologist/weather_"+time+"_"+DEVICE_SERIAL_ID+".txt"
+		
 		file = open(string, "a")
 		file.writelines(content)
 		file.close()
