@@ -17,7 +17,7 @@ MQTT_BROKER = data["device"]["ENDPOINT_URL"]
 SERIAL_ID = data["device"]["SERIAL_ID"]
 PORT = 8883
 MQTT_KEEP_INTERVAL = 44
-JOB_CLIENT = 'iot-data'
+JOB_CLIENT = f'JobReciverClient-{SERIAL_ID}'
 JOB_TOPIC = f'cameraDevice/job/{SERIAL_ID}'
 QoS = 0
 
@@ -26,7 +26,7 @@ cert = '/etc/entomologist/cert/certificate.pem.crt'
 privateKey = '/etc/entomologist/cert/private.pem.key'
 
 
-def updateData(self,name,keyValue):
+def updateData(name,keyValue):
         data={}
         with open(f"/etc/entomologist/ento.conf",'r') as file:
             data=json.load(file)
